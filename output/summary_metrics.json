@@ -1,0 +1,14 @@
+{
+  "simulation_date": "2026-01-16T10:42:59.846028",
+  "total_deliveries": 2642,
+  "carbon_credits": {
+    "total_credits": 8586500.0,
+    "nitrogen_offset_credits": 3302500.0,
+    "soil_carbon_credits": 5284000.0,
+    "total_penalties": 7300140.106398346,
+    "transport_emissions": 153922.4532550529,
+    "overflow_penalties": 950000.0,
+    "excess_n_penalties": 6196217.65314331,
+    "net_score": 1286359.893601654
+  }
+}
