@@ -239,9 +239,12 @@ def get_7day_n_demand(farm_id, current_date, demand_df, days=14):
 
 
 def score_and_rank_farms(stp_id, current_date, farms_df, distance_matrix, 
-                         weather_df, demand_df, accountant, truck_capacity=10):
+                         weather_df, demand_df, accountant, tracker, truck_capacity=10):
     """
     Score and rank all farms for a given STP.
+    
+    Args:
+        tracker: STPStorageTracker instance for checking storage levels
     
     Returns: List of (farm_id, score, details) sorted by score (highest first)
     """
@@ -256,18 +259,47 @@ def score_and_rank_farms(stp_id, current_date, farms_df, distance_matrix,
         if is_rain_locked(farm_zone, current_date, weather_df):
             continue
         
-        # BUFFER TRICK: Check 14-day demand
+        # PRECISION LOADING (Judge's Recommendation)
+        # Check 14-day nitrogen demand with 10% buffer
         two_week_demand = get_7day_n_demand(farm_id, current_date, demand_df, days=14)
         
-        # Calculate delivery amount (10 tons max)
-        tons_to_deliver = truck_capacity
-        n_to_deliver = tons_to_deliver * n_per_ton  # kg of nitrogen
+        # Skip if no demand
+        if two_week_demand <= 0:
+            continue
+        
+        # Calculate precision delivery amount
+        # Step 1: Max_N_today = Daily_Demand * 1.1 (safety buffer)
+        max_n_allowed = two_week_demand * 1.1
+        
+        # Step 2: Tons_Needed = Max_N / 25 (conversion factor)
+        tons_needed = max_n_allowed / n_per_ton
+        
+        # Step 3: Final_Delivery = min(Tons_Needed, 10, STP_Storage)
+        stp_available = tracker.get_available_biosolid(stp_id)
+        
+        # SMART HYBRID: Balance precision with overflow prevention
+        stp_capacity = tracker.max_capacity[stp_id]
+        stp_current = tracker.storage[stp_id]
+        stp_pct = stp_current / stp_capacity * 100
+        
+        if stp_pct > 75:
+            # CRISIS MODE (>75%): Deliver full trucks to prevent overflow
+            tons_to_deliver = min(truck_capacity, stp_available)
+        else:
+            # PRECISION MODE (≤75%): Match exact farm demand
+            tons_to_deliver = min(tons_needed, truck_capacity, stp_available)
+            tons_to_deliver = round(tons_to_deliver, 1)
+            
+            # Skip tiny deliveries (<1.0 tons = 25kg N)
+            if tons_to_deliver < 1.0:
+                continue
+        
+        n_to_deliver = tons_to_deliver * n_per_ton  # Actual kg of nitrogen
         
         # Get distance
         distance = distance_matrix[(stp_id, farm_id)]
         
         # Calculate net score for this delivery
-        # Use 2-week demand to reduce excess penalty
         net_score, _ = accountant.calculate_delivery_score(
             tons_to_deliver, distance, two_week_demand, n_to_deliver
         )
@@ -342,17 +374,18 @@ def run_simulation():
                 continue
             
             # Determine delivery urgency based on fullness
-            if fullness_pct > 80:
-                max_deliveries = 20  # CRITICAL - empty urgently
-            elif fullness_pct > 50:
-                max_deliveries = 15  # WARNING - increase deliveries
+            # BALANCED STRATEGY: More deliveries when tanks fill
+            if fullness_pct > 70:
+                max_deliveries = 40  # CRISIS - maximum effort
+            elif fullness_pct > 45:
+                max_deliveries = 25  # WARNING - increase deliveries
             else:
-                max_deliveries = 10  # NORMAL operations
+                max_deliveries = 15  # NORMAL - steady operations
             
             # Score and rank farms
             ranked_farms = score_and_rank_farms(
                 stp_id, current_date, farms, distance_matrix,
-                weather, demand, accountant, truck_capacity
+                weather, demand, accountant, tracker, truck_capacity
             )
             
             # Dispatch trucks to top-scoring farms

@@ -1,14 +1,14 @@
 {
-  "simulation_date": "2026-01-16T11:25:51.818284",
-  "total_deliveries": 2642,
+  "simulation_date": "2026-01-16T16:08:32.205019",
+  "total_deliveries": 6297,
   "carbon_credits": {
-    "total_credits": 8586500.0,
-    "nitrogen_offset_credits": 3302500.0,
-    "soil_carbon_credits": 5284000.0,
-    "total_penalties": 7300140.106398346,
-    "transport_emissions": 153922.4532550529,
-    "overflow_penalties": 950000.0,
-    "excess_n_penalties": 6196217.65314331,
-    "net_score": 1286359.893601654
+    "total_credits": 8126755.0,
+    "nitrogen_offset_credits": 3125675.0,
+    "soil_carbon_credits": 5001080.0,
+    "total_penalties": 7091932.393931203,
+    "transport_emissions": 844741.391956455,
+    "overflow_penalties": 1300699.9999999944,
+    "excess_n_penalties": 4946491.001974736,
+    "net_score": 1034822.6060687974
   }
 }
