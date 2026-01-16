@@ -259,17 +259,17 @@ def score_and_rank_farms(stp_id, current_date, farms_df, distance_matrix,
         if is_rain_locked(farm_zone, current_date, weather_df):
             continue
         
-        # PRECISION LOADING (Judge's Recommendation)
-        # Check 14-day nitrogen demand with 10% buffer
-        two_week_demand = get_7day_n_demand(farm_id, current_date, demand_df, days=14)
+        # DEMAND FIX: 7-day window, NO buffer (test hypothesis)
+        # Kaggle may use shorter window than 14 days
+        seven_day_demand = get_7day_n_demand(farm_id, current_date, demand_df, days=7)
         
         # Skip if no demand
-        if two_week_demand <= 0:
+        if seven_day_demand <= 0:
             continue
         
         # Calculate precision delivery amount
-        # Step 1: Max_N_today = Daily_Demand * 1.1 (safety buffer)
-        max_n_allowed = two_week_demand * 1.1
+        # Step 1: Max_N_today = 7-day demand, NO buffer
+        max_n_allowed = seven_day_demand
         
         # Step 2: Tons_Needed = Max_N / 25 (conversion factor)
         tons_needed = max_n_allowed / n_per_ton
@@ -301,14 +301,14 @@ def score_and_rank_farms(stp_id, current_date, farms_df, distance_matrix,
         
         # Calculate net score for this delivery
         net_score, _ = accountant.calculate_delivery_score(
-            tons_to_deliver, distance, two_week_demand, n_to_deliver
+            tons_to_deliver, distance, seven_day_demand, n_to_deliver
         )
         
         # Accept any delivery with positive net score
         if net_score > 0:
             scores.append((farm_id, net_score, {
                 'distance': distance,
-                'week_demand': two_week_demand,
+                'week_demand': seven_day_demand,
                 'n_to_deliver': n_to_deliver,
                 'tons': tons_to_deliver
             }))
